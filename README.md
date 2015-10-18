@@ -2,7 +2,7 @@
 SoracomのAPIを使ったサンプルAndroidアプリ。GooglePlayに公開しているアプリのソース。
 
 GooglePlayのURL
-
+https://play.google.com/store/apps/details?id=com.lyricaloriginal.soracomsampleapp&hl=ja
 
 #LICENSE
 Apache License2.0で公開します。
