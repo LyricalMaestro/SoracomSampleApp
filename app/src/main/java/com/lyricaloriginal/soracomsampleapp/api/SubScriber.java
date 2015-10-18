@@ -30,6 +30,9 @@ public class SubScriber {
     public String speedClass;
     public BigDecimal createdAt;
     public BigDecimal lastModifiedAt;
+    /**
+     * 有効期限。
+     */
     public BigDecimal expirtyTime;
     /**
      * ステータス。状態。<BR>
