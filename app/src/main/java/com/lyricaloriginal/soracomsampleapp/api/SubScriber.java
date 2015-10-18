@@ -28,8 +28,22 @@ public class SubScriber {
      * 速度クラス。
      */
     public String speedClass;
+    /**
+     * 作成時間？？
+     */
     public BigDecimal createdAt;
+    /**
+     * 最終修正日時
+     */
     public BigDecimal lastModifiedAt;
+    /**
+     * グループID
+     */
+    public String groupId;
+    /**
+     * 解約できるかどうか？
+     */
+    public boolean terminationEnabled;
     /**
      * 有効期限。
      */
@@ -44,9 +58,18 @@ public class SubScriber {
      */
     public Tags tags;
     /**
+     * セッション状態
+     */
+    public SessionStatus sessionStatus;
+    /**
      * OperatorId
      */
     public String operatorId;
+
+    /**
+     * SIMのサイズ。[mini]とか[nano]とかが入る。
+     */
+    public String moduleType;
 
     /**
      * タグ情報をまとめたクラスです。
@@ -56,5 +79,24 @@ public class SubScriber {
          * 名前
          */
         public String name;
+    }
+
+    public static class SessionStatus {
+        /**
+         * 最終更新日時
+         */
+        public BigDecimal lastUpdateAt;
+        /**
+         * IMEI
+         */
+        public String imei;
+        /**
+         * オンラインかどうか
+         */
+        public boolean online;
+        /**
+         * IDアドレスだけど…?
+         */
+        public String ueIpAddress;
     }
 }

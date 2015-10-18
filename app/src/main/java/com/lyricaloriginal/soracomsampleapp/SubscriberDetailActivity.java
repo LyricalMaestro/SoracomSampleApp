@@ -102,6 +102,21 @@ public class SubscriberDetailActivity extends AppCompatActivity
         details.add("IP Address:\r\n" + subScribers.ipAddress);
         details.add("SpeedClass:\r\n" + subScribers.speedClass);
         details.add("STATUS:\r\n" + subScribers.status);
+        details.add("APN:\r\n" + subScribers.apn);
+        details.add("groupId:\r\n" + subScribers.groupId);
+        details.add("moduleType:\r\n" + subScribers.moduleType);
+        details.add("createAt:\r\n" + subScribers.createdAt);
+        details.add("lastModifiedAt:\r\n" + subScribers.lastModifiedAt);
+        details.add("expiredTime:\r\n" + subScribers.expirtyTime);
+        details.add("terminationEnabled:\r\n" + subScribers.terminationEnabled);
+        if(subScribers.sessionStatus != null){
+            details.add("sessionStatus・lastUpdateAt:\r\n" + subScribers.sessionStatus.lastUpdateAt);
+            details.add("sessionStatus・IMEI:\r\n" + subScribers.sessionStatus.imei);
+            details.add("sessionStatus・ueIpAddress:\r\n" + subScribers.sessionStatus.ueIpAddress);
+            details.add("sessionStatus・online:\r\n" + subScribers.sessionStatus.online);
+        }else{
+            details.add("sessionStatus:\r\nNULL");
+        }
 
         ListView listView = (ListView) findViewById(R.id.detail_list);
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
