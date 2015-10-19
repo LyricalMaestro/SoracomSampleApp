@@ -1,16 +1,20 @@
 package com.lyricaloriginal.soracomsampleapp;
 
+import android.app.DialogFragment;
 import android.app.LoaderManager;
 import android.content.Loader;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
 import com.lyricaloriginal.soracomsampleapp.api.AuthInfo;
+import com.lyricaloriginal.soracomsampleapp.api.SpeedClass;
 import com.lyricaloriginal.soracomsampleapp.api.SubScriber;
 
 import java.io.EOFException;
@@ -22,19 +26,24 @@ import java.util.List;
  * 指定したSubScriberの詳細を示すActivityです。
  */
 public class SubscriberDetailActivity extends AppCompatActivity
-        implements LoaderManager.LoaderCallbacks<Response<SubScriber>> {
+        implements LoaderManager.LoaderCallbacks<Response<SubScriber>>, ListView.OnItemClickListener,
+        SingleChoiceDialogFragment.Listener {
+
+    private SubScriber _subScriber;
+    private AuthInfo _authInfo;
+    private String _imsi;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_subscriber_detail);
 
-        AuthInfo authInfo = (AuthInfo) getIntent().getParcelableExtra("AUTH_INFO");
-        String imsi = getIntent().getStringExtra("IMSI");
+        _authInfo = (AuthInfo) getIntent().getParcelableExtra("AUTH_INFO");
+        _imsi = getIntent().getStringExtra("IMSI");
 
         Bundle bundle = new Bundle();
-        bundle.putParcelable("AUTH_INFO", authInfo);
-        bundle.putString("IMSI", imsi);
+        bundle.putParcelable("AUTH_INFO", _authInfo);
+        bundle.putString("IMSI", _imsi);
         getLoaderManager().initLoader(0, bundle, this);
     }
 
@@ -42,14 +51,24 @@ public class SubscriberDetailActivity extends AppCompatActivity
     public Loader<Response<SubScriber>> onCreateLoader(int id, Bundle args) {
         AuthInfo authInfo = (AuthInfo) args.getParcelable("AUTH_INFO");
         String imsi = args.getString("IMSI");
-        return new SubscriberLoader(this, authInfo, imsi);
+        if (id == 0) {
+            return new SubscriberLoader(this, authInfo, imsi);
+        } else {
+            String speedClass = args.getString("SPEED_CLASS");
+            return new UpdateSpeedClassLoader(this, authInfo, imsi, speedClass);
+        }
     }
 
     @Override
     public void onLoadFinished(Loader<Response<SubScriber>> loader, Response<SubScriber> data) {
         if (data.getResult()) {
+            if (loader instanceof UpdateSpeedClassLoader) {
+                Toast.makeText(this, "速度クラスを更新しました。", Toast.LENGTH_SHORT).show();
+            }
+
             SubScriber subScriber = data.getData();
             if (subScriber != null) {
+                _subScriber = subScriber;
                 updateUi(subScriber);
             } else {
                 showNotExistToast();
@@ -94,6 +113,27 @@ public class SubscriberDetailActivity extends AppCompatActivity
         });
     }
 
+    @Override
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        String item = parent.getItemAtPosition(position).toString();
+        if (item.startsWith("SpeedClass")) {
+            showSelectSpeedClassDialog();
+        }
+    }
+
+    private void showSelectSpeedClassDialog() {
+        String[] values = SpeedClass.getValues();
+        int sel = -1;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i].equals(_subScriber.speedClass)) {
+                sel = i;
+            }
+        }
+        DialogFragment dialog = SingleChoiceDialogFragment.
+                newInstance("速度クラスの設定", values, sel);
+        dialog.show(getFragmentManager(), "SpeedClass");
+    }
+
     private void updateUi(SubScriber subScribers) {
         List<String> details = new ArrayList<String>();
         details.add("IMSI:\r\n" + subScribers.imsi);
@@ -109,19 +149,37 @@ public class SubscriberDetailActivity extends AppCompatActivity
         details.add("lastModifiedAt:\r\n" + subScribers.lastModifiedAt);
         details.add("expiredTime:\r\n" + subScribers.expirtyTime);
         details.add("terminationEnabled:\r\n" + subScribers.terminationEnabled);
-        if(subScribers.sessionStatus != null){
+        if (subScribers.sessionStatus != null) {
             details.add("sessionStatus・lastUpdateAt:\r\n" + subScribers.sessionStatus.lastUpdateAt);
             details.add("sessionStatus・IMEI:\r\n" + subScribers.sessionStatus.imei);
             details.add("sessionStatus・ueIpAddress:\r\n" + subScribers.sessionStatus.ueIpAddress);
             details.add("sessionStatus・online:\r\n" + subScribers.sessionStatus.online);
-        }else{
+        } else {
             details.add("sessionStatus:\r\nNULL");
         }
 
         ListView listView = (ListView) findViewById(R.id.detail_list);
+        listView.setOnItemClickListener(this);
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_list_item_1,
                 details.toArray(new String[0]));
         listView.setAdapter(adapter);
+    }
+
+    @Override
+    public void onSelectItemListener(String tag, final String selectedValue) {
+        Handler handler = new Handler();
+        if (tag.equals("SpeedClass")) {
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Bundle bundle = new Bundle();
+                    bundle.putParcelable("AUTH_INFO", _authInfo);
+                    bundle.putString("IMSI", _imsi);
+                    bundle.putString("SPEED_CLASS", selectedValue);
+                    getLoaderManager().restartLoader(1, bundle, SubscriberDetailActivity.this);
+                }
+            });
+        }
     }
 }

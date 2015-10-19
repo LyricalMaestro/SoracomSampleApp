@@ -110,4 +110,43 @@ public final class SoracomApis {
     private static String makeUrl(String apiPath) {
         return SORACOM_API_URL + apiPath;
     }
+
+    /**
+     * 指定されたSubscriberの速度クラスを変更します。
+     *
+     * @param authInfo   　APIキー、OperatorId、tokenの情報
+     * @param imsi       IMSI
+     * @param speedClass 変更したいSpeedClass
+     * @throws IOException
+     * @return　変更後のSubscriber。nullの場合は変更失敗。
+     */
+    public static SubScriber updateSpeedClass(AuthInfo authInfo, String imsi, String speedClass)
+            throws IOException {
+        if (TextUtils.isEmpty(imsi)) {
+            return null;
+        } else if (!SpeedClass.isValidValue(speedClass)) {
+            return null;
+        }
+
+        RequestBody requestBody = RequestBody.create(
+                MediaType.parse("application/json"),
+                SpeedClass.toJsonString(speedClass).getBytes("UTF-8"));
+
+        Request.Builder builder = new Request.Builder();
+        builder.url(makeUrl("/subscribers/" + imsi + "/update_speed_class"))
+                .post(requestBody);
+        if (authInfo != null) {
+            builder.addHeader("X-Soracom-API-Key", authInfo.apiKey)
+                    .addHeader("X-Soracom-Token", authInfo.token);
+        }
+        Request request = builder.build();
+
+        OkHttpClient client = new OkHttpClient();
+        client.setConnectTimeout(READ_TIMEOUT, TimeUnit.MILLISECONDS);
+        Response resp = client.newCall(request).execute();
+        if (resp.code() == 200) {
+            return JSON.decode(resp.body().string(), SubScriber.class);
+        }
+        return null;
+    }
 }
