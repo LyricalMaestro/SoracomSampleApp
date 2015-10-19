@@ -2,13 +2,16 @@ package com.lyricaloriginal.soracomsampleapp.api;
 
 import android.text.TextUtils;
 
+import com.squareup.okhttp.MediaType;
+import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Request;
+import com.squareup.okhttp.RequestBody;
+import com.squareup.okhttp.Response;
+
 import net.arnx.jsonic.JSON;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-
-import javax.net.ssl.HttpsURLConnection;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Soracom API を簡単に呼び出せるメソッドをまとめたクラスです。
@@ -32,31 +35,21 @@ public final class SoracomApis {
      * @throws IOException
      */
     public static AuthInfo auth(String email, String password) throws IOException {
-        HttpsURLConnection conn = null;
-        AuthInfo authInfo = null;
-        try {
-            URL url = makeUrl("/auth");
-            conn = (HttpsURLConnection) url.openConnection();
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setDoOutput(true);
-            conn.setDoInput(true);
-            conn.setConnectTimeout(READ_TIMEOUT);
+        String param = String.format("{\"email\":\"%s\",\"password\":\"%s\"}",
+                email, password);
+        RequestBody requestBody = RequestBody.create(
+                MediaType.parse("application/json"), param.getBytes("UTF-8"));
 
-            conn.connect();
+        Request.Builder builder = new Request.Builder();
+        Request request = builder.url(makeUrl("/auth")).post(requestBody).build();
 
-            String param = String.format("{\"email\":\"%s\",\"password\":\"%s\"}", email, password);
-            conn.getOutputStream().write(param.getBytes("UTF-8"));
-            conn.getOutputStream().flush();
-
-            if (conn.getResponseCode() == 200) {
-                authInfo = JSON.decode(conn.getInputStream(), AuthInfo.class);
-            }
-        } finally {
-            if (conn != null)
-                conn.disconnect();
+        OkHttpClient client = new OkHttpClient();
+        client.setConnectTimeout(READ_TIMEOUT, TimeUnit.MILLISECONDS);
+        Response resp = client.newCall(request).execute();
+        if (resp.code() == 200) {
+            return JSON.decode(resp.body().string(), AuthInfo.class);
         }
-        return authInfo;
+        return null;
     }
 
     /**
@@ -67,29 +60,21 @@ public final class SoracomApis {
      * @throws IOException
      */
     public static SubScriber[] subscribers(AuthInfo authInfo) throws IOException {
-        HttpsURLConnection conn = null;
-        SubScriber[] subscribers = null;
-        try {
-            URL url = makeUrl("/subscribers?tag_value_match_mode=exact");
-            conn = (HttpsURLConnection) url.openConnection();
-            if (authInfo != null) {
-                conn.setRequestProperty("X-Soracom-API-Key", authInfo.apiKey);
-                conn.setRequestProperty("X-Soracom-Token", authInfo.token);
-            }
-            conn.setDoInput(true);
-            conn.setConnectTimeout(5000);
-
-            conn.connect();
-
-            int code = conn.getResponseCode();
-            if (code == 200) {
-                subscribers = JSON.decode(conn.getInputStream(), SubScriber[].class);
-            }
-        } finally {
-            if (conn != null)
-                conn.disconnect();
+        Request.Builder builder = new Request.Builder();
+        builder.url(makeUrl("/subscribers?tag_value_match_mode=exact")).get();
+        if (authInfo != null) {
+            builder.addHeader("X-Soracom-API-Key", authInfo.apiKey)
+                    .addHeader("X-Soracom-Token", authInfo.token);
         }
-        return subscribers;
+        Request request = builder.build();
+
+        OkHttpClient client = new OkHttpClient();
+        client.setConnectTimeout(READ_TIMEOUT, TimeUnit.MILLISECONDS);
+        Response resp = client.newCall(request).execute();
+        if (resp.code() == 200) {
+            return JSON.decode(resp.body().string(), SubScriber[].class);
+        }
+        return null;
     }
 
     /**
@@ -105,32 +90,24 @@ public final class SoracomApis {
             return null;
         }
 
-        HttpsURLConnection conn = null;
-        SubScriber subscriber = null;
-        try {
-            URL url = makeUrl("/subscribers/" + imsi);
-            conn = (HttpsURLConnection) url.openConnection();
-            if (authInfo != null) {
-                conn.setRequestProperty("X-Soracom-API-Key", authInfo.apiKey);
-                conn.setRequestProperty("X-Soracom-Token", authInfo.token);
-            }
-            conn.setDoInput(true);
-            conn.setConnectTimeout(5000);
-
-            conn.connect();
-
-            int code = conn.getResponseCode();
-            if (code == 200) {
-                subscriber = JSON.decode(conn.getInputStream(), SubScriber.class);
-            }
-        } finally {
-            if (conn != null)
-                conn.disconnect();
+        Request.Builder builder = new Request.Builder();
+        builder.url(makeUrl("/subscribers/" + imsi)).get();
+        if (authInfo != null) {
+            builder.addHeader("X-Soracom-API-Key", authInfo.apiKey)
+                    .addHeader("X-Soracom-Token", authInfo.token);
         }
-        return subscriber;
+        Request request = builder.build();
+
+        OkHttpClient client = new OkHttpClient();
+        client.setConnectTimeout(READ_TIMEOUT, TimeUnit.MILLISECONDS);
+        Response resp = client.newCall(request).execute();
+        if (resp.code() == 200) {
+            return JSON.decode(resp.body().string(), SubScriber.class);
+        }
+        return null;
     }
 
-    private static URL makeUrl(String apiPath) throws MalformedURLException {
-        return new URL(SORACOM_API_URL + apiPath);
+    private static String makeUrl(String apiPath) {
+        return SORACOM_API_URL + apiPath;
     }
 }
