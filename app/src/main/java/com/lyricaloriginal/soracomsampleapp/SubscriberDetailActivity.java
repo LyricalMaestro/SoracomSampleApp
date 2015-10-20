@@ -7,8 +7,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.View;
-import android.widget.AdapterView;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -26,7 +26,7 @@ import java.util.List;
  * 指定したSubScriberの詳細を示すActivityです。
  */
 public class SubscriberDetailActivity extends AppCompatActivity
-        implements LoaderManager.LoaderCallbacks<Response<SubScriber>>, ListView.OnItemClickListener,
+        implements LoaderManager.LoaderCallbacks<Response<SubScriber>>,
         SingleChoiceDialogFragment.Listener {
 
     private SubScriber _subScriber;
@@ -45,6 +45,20 @@ public class SubscriberDetailActivity extends AppCompatActivity
         bundle.putParcelable("AUTH_INFO", _authInfo);
         bundle.putString("IMSI", _imsi);
         getLoaderManager().initLoader(0, bundle, this);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuItem item = menu.add(0, 0, 0, "速度クラス変更");
+        item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        item.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                showSelectSpeedClassDialog();
+                return true;
+            }
+        });
+        return super.onCreateOptionsMenu(menu);
     }
 
     @Override
@@ -113,14 +127,6 @@ public class SubscriberDetailActivity extends AppCompatActivity
         });
     }
 
-    @Override
-    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        String item = parent.getItemAtPosition(position).toString();
-        if (item.startsWith("SpeedClass")) {
-            showSelectSpeedClassDialog();
-        }
-    }
-
     private void showSelectSpeedClassDialog() {
         String[] values = SpeedClass.getValues();
         int sel = -1;
@@ -159,7 +165,6 @@ public class SubscriberDetailActivity extends AppCompatActivity
         }
 
         ListView listView = (ListView) findViewById(R.id.detail_list);
-        listView.setOnItemClickListener(this);
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_list_item_1,
                 details.toArray(new String[0]));
