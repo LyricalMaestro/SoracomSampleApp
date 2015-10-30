@@ -7,25 +7,25 @@ import com.lyricaloriginal.soracomsampleapp.api.SoracomApis;
 import com.lyricaloriginal.soracomsampleapp.api.SubScriber;
 
 /**
- * Created by LyricalMaestro on 15/10/18.
+ * Created by LyricalMaestro on 2015/10/31.
  */
-public class UpdateSpeedClassLoader extends BaseLoader<SubScriber> {
+public class ChangeActivationLoader extends BaseLoader<SubScriber> {
 
     private final AuthInfo _authInfo;
     private final String _imsi;
-    private final String _speedClass;
+    private final boolean _beActivate;
 
-    public UpdateSpeedClassLoader(
-            Context context, AuthInfo authInfo, String imsi, String speedClass) {
+    protected ChangeActivationLoader(
+            Context context, AuthInfo authInfo, String imsi, boolean beActivate) {
         super(context);
         _authInfo = authInfo;
         _imsi = imsi;
-        _speedClass = speedClass;
+        _beActivate = beActivate;
     }
 
     @Override
     protected Response<SubScriber> load() throws Exception {
-        SubScriber subScriber = SoracomApis.updateSpeedClass(_authInfo, _imsi, _speedClass);
+        SubScriber subScriber = SoracomApis.changeActivateState(_authInfo, _imsi, _beActivate);
         return new Response<SubScriber>(subScriber);
     }
 }

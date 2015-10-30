@@ -149,4 +149,42 @@ public final class SoracomApis {
         }
         return null;
     }
+
+    /**
+     * 指定されたSubscriberの使用中・休止中を切り替えます。
+     *
+     * @param authInfo   　APIキー、OperatorId、tokenの情報
+     * @param imsi       IMSI
+     * @param beActivate true:Activate, false:deactivate
+     * @throws IOException
+     * @return　変更後のSubscriber。nullの場合は変更失敗。
+     */
+    public static SubScriber changeActivateState(AuthInfo authInfo, String imsi, boolean beActivate)
+            throws IOException {
+        if (TextUtils.isEmpty(imsi)) {
+            return null;
+        }
+
+        RequestBody requestBody = RequestBody.create(
+                MediaType.parse("application/json"),
+                "{}".getBytes("UTF-8"));
+
+        String command = beActivate ? "activate" : "deactivate";
+        Request.Builder builder = new Request.Builder();
+        builder.url(makeUrl("/subscribers/" + imsi + "/" + command))
+                .post(requestBody);
+        if (authInfo != null) {
+            builder.addHeader("X-Soracom-API-Key", authInfo.apiKey)
+                    .addHeader("X-Soracom-Token", authInfo.token);
+        }
+        Request request = builder.build();
+
+        OkHttpClient client = new OkHttpClient();
+        client.setConnectTimeout(READ_TIMEOUT, TimeUnit.MILLISECONDS);
+        Response resp = client.newCall(request).execute();
+        if (resp.code() == 200) {
+            return JSON.decode(resp.body().string(), SubScriber.class);
+        }
+        return null;
+    }
 }

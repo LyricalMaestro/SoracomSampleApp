@@ -6,6 +6,7 @@ import android.content.Loader;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -50,7 +51,7 @@ public class SubscriberDetailActivity extends AppCompatActivity
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuItem item = menu.add(0, 0, 0, "速度クラス変更");
-        item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        item.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
         item.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
@@ -58,7 +59,27 @@ public class SubscriberDetailActivity extends AppCompatActivity
                 return true;
             }
         });
+        MenuItem item2 = menu.add(0, 1, 1, "aaa");
+        item2.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+        item2.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                Bundle bundle = new Bundle();
+                bundle.putParcelable("AUTH_INFO", _authInfo);
+                bundle.putString("IMSI", _imsi);
+                bundle.putBoolean("BE_ACTIVATE", !beActivate());
+                getLoaderManager().restartLoader(2, bundle, SubscriberDetailActivity.this);
+
+                return true;
+            }
+        });
         return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        menu.findItem(1).setTitle(beActivate() ? "休止" : "使用開始");
+        return super.onPrepareOptionsMenu(menu);
     }
 
     @Override
@@ -67,10 +88,14 @@ public class SubscriberDetailActivity extends AppCompatActivity
         String imsi = args.getString("IMSI");
         if (id == 0) {
             return new SubscriberLoader(this, authInfo, imsi);
-        } else {
+        } else if(id == 1){
             String speedClass = args.getString("SPEED_CLASS");
             return new UpdateSpeedClassLoader(this, authInfo, imsi, speedClass);
+        } else if(id == 2){
+            boolean beActivate = args.getBoolean("BE_ACTIVATE");
+            return new ChangeActivationLoader(this, authInfo, imsi, beActivate);
         }
+        return null;
     }
 
     @Override
@@ -78,6 +103,8 @@ public class SubscriberDetailActivity extends AppCompatActivity
         if (data.getResult()) {
             if (loader instanceof UpdateSpeedClassLoader) {
                 Toast.makeText(this, "速度クラスを更新しました。", Toast.LENGTH_SHORT).show();
+            }else if(loader instanceof ChangeActivationLoader){
+                Toast.makeText(this, "Statusを変更しました。", Toast.LENGTH_SHORT).show();
             }
 
             SubScriber subScriber = data.getData();
@@ -186,5 +213,13 @@ public class SubscriberDetailActivity extends AppCompatActivity
                 }
             });
         }
+    }
+
+    private boolean beActivate(){
+        if(_subScriber == null){
+            return false;
+        }
+
+        return TextUtils.equals(_subScriber.status, "active");
     }
 }
