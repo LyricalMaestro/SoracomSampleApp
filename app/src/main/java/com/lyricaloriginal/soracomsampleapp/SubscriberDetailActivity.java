@@ -50,36 +50,32 @@ public class SubscriberDetailActivity extends AppCompatActivity
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        MenuItem item = menu.add(0, 0, 0, "速度クラス変更");
-        item.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
-        item.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem item) {
-                showSelectSpeedClassDialog();
-                return true;
-            }
-        });
-        MenuItem item2 = menu.add(0, 1, 1, "aaa");
-        item2.setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
-        item2.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem item) {
-                Bundle bundle = new Bundle();
-                bundle.putParcelable("AUTH_INFO", _authInfo);
-                bundle.putString("IMSI", _imsi);
-                bundle.putBoolean("BE_ACTIVATE", !beActivate());
-                getLoaderManager().restartLoader(2, bundle, SubscriberDetailActivity.this);
-
-                return true;
-            }
-        });
+        getMenuInflater().inflate(R.menu.subscriber_detail, menu);
         return super.onCreateOptionsMenu(menu);
     }
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        menu.findItem(1).setTitle(beActivate() ? "休止" : "使用開始");
+        menu.findItem(R.id.menu_change_activation).
+                setTitle(beActivate() ? "休止" : "使用開始");
         return super.onPrepareOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_change_speed_class:
+                showSelectSpeedClassDialog();
+                break;
+            case R.id.menu_change_activation:
+                Bundle bundle = new Bundle();
+                bundle.putParcelable("AUTH_INFO", _authInfo);
+                bundle.putString("IMSI", _imsi);
+                bundle.putBoolean("BE_ACTIVATE", !beActivate());
+                getLoaderManager().restartLoader(2, bundle, SubscriberDetailActivity.this);
+                break;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -88,10 +84,10 @@ public class SubscriberDetailActivity extends AppCompatActivity
         String imsi = args.getString("IMSI");
         if (id == 0) {
             return new SubscriberLoader(this, authInfo, imsi);
-        } else if(id == 1){
+        } else if (id == 1) {
             String speedClass = args.getString("SPEED_CLASS");
             return new UpdateSpeedClassLoader(this, authInfo, imsi, speedClass);
-        } else if(id == 2){
+        } else if (id == 2) {
             boolean beActivate = args.getBoolean("BE_ACTIVATE");
             return new ChangeActivationLoader(this, authInfo, imsi, beActivate);
         }
@@ -103,7 +99,7 @@ public class SubscriberDetailActivity extends AppCompatActivity
         if (data.getResult()) {
             if (loader instanceof UpdateSpeedClassLoader) {
                 Toast.makeText(this, "速度クラスを更新しました。", Toast.LENGTH_SHORT).show();
-            }else if(loader instanceof ChangeActivationLoader){
+            } else if (loader instanceof ChangeActivationLoader) {
                 Toast.makeText(this, "Statusを変更しました。", Toast.LENGTH_SHORT).show();
             }
 
@@ -215,8 +211,8 @@ public class SubscriberDetailActivity extends AppCompatActivity
         }
     }
 
-    private boolean beActivate(){
-        if(_subScriber == null){
+    private boolean beActivate() {
+        if (_subScriber == null) {
             return false;
         }
 
