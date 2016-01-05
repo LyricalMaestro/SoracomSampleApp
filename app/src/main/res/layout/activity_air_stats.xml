@@ -9,16 +9,16 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.lyricaloriginal.soracomsampleapp.AirStatsActivity">
 
-    <TextView
-        android:id="@+id/air_stats_chart"
+    <com.github.mikephil.charting.charts.BarChart
+        android:id="@+id/chart1"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:visibility="gone" />
 
     <TextView
         android:id="@+id/progress_bar"
-        android:text="通信量履歴取得中・・・"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true" />
+        android:layout_centerInParent="true"
+        android:text="通信量履歴取得中・・・" />
 </RelativeLayout>

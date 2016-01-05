@@ -1,13 +1,22 @@
 package com.lyricaloriginal.soracomsampleapp;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
-import android.widget.TextView;
 
+import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.components.Legend;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.data.BarData;
+import com.github.mikephil.charting.data.BarDataSet;
+import com.github.mikephil.charting.data.BarEntry;
 import com.lyricaloriginal.soracomapiandroid.AirStats;
 import com.lyricaloriginal.soracomapiandroid.Soracom;
+import com.lyricaloriginal.soracomapiandroid.TrafficStats;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import retrofit.Call;
@@ -20,16 +29,17 @@ import retrofit.Retrofit;
  */
 public class AirStatsActivity extends AppCompatActivity implements Callback<List<AirStats>> {
 
+    protected BarChart _chart;
     private Auth _authInfo;
     private String _imsi;
-    private AirStats _airStats;
-
     private Call<List<AirStats>> _call = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_air_stats);
+        _chart = (BarChart) findViewById(R.id.chart1);
+        initChart();
 
         _authInfo = (Auth) getIntent().getParcelableExtra("AUTH_INFO");
         _imsi = getIntent().getStringExtra("IMSI");
@@ -76,29 +86,72 @@ public class AirStatsActivity extends AppCompatActivity implements Callback<List
 
     private void onStartExecuting() {
         findViewById(R.id.progress_bar).setVisibility(View.VISIBLE);
-        findViewById(R.id.air_stats_chart).setVisibility(View.GONE);
+        _chart.setVisibility(View.GONE);
     }
 
     private void onSuccessExecuting(List<AirStats> airStatsList) {
         findViewById(R.id.progress_bar).setVisibility(View.GONE);
-        findViewById(R.id.air_stats_chart).setVisibility(View.VISIBLE);
+        _chart.setVisibility(View.VISIBLE);
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("-------------------------------\n");
-        for(AirStats airStats : airStatsList){
-            sb.append(airStats.date + "\n");
-            sb.append(airStats.unixtime + "\n");
-            sb.append("-------------------------------\n");
+        ArrayList<String> xVals = new ArrayList<String>();
+        ArrayList<BarEntry> yVals1 = new ArrayList<BarEntry>();
+        for (int i = 0; i < airStatsList.size(); i++) {
+            AirStats airStats = airStatsList.get(i);
+            long val1 = 0;
+            long val2 = 0;
+            for (TrafficStats traffics : airStats.dataTrafficStatsMap.values()) {
+                val1 += traffics.uploadByteSizeTotal;
+                val2 += traffics.downloadByteSizeTotal;
+            }
+            xVals.add(airStats.date);
+            yVals1.add(new BarEntry(new float[]{val1, val2}, i));
         }
-        TextView textView = (TextView) findViewById(R.id.air_stats_chart);
-        textView.setVisibility(View.VISIBLE);
-        textView.setText(sb.toString());
+
+        BarDataSet set1 = new BarDataSet(yVals1, "通信量(KB)");
+        set1.setBarSpacePercent(35f);
+        set1.setColors(new int[]{
+                Color.BLUE, Color.YELLOW
+        });
+        set1.setStackLabels(new String[]{"Upload", "Download"});
+
+        ArrayList<BarDataSet> dataSets = new ArrayList<BarDataSet>();
+        dataSets.add(set1);
+
+        BarData data = new BarData(xVals, dataSets);
+        data.setValueTextSize(10f);
+
+        _chart.setData(data);
     }
 
     private void onFailureExecuting() {
         findViewById(R.id.progress_bar).setVisibility(View.GONE);
-        TextView textView = (TextView) findViewById(R.id.air_stats_chart);
-        textView.setVisibility(View.VISIBLE);
-        textView.setText("サーバからの通信量履歴取得失敗!");
+    }
+
+    private void initChart() {
+        _chart.setMaxVisibleValueCount(60);
+        _chart.setPinchZoom(false);
+        _chart.setDrawGridBackground(false);
+
+        XAxis xAxis = _chart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setDrawGridLines(false);
+        xAxis.setSpaceBetweenLabels(2);
+
+        YAxis leftAxis = _chart.getAxisLeft();
+        leftAxis.setLabelCount(8, false);
+        leftAxis.setPosition(YAxis.YAxisLabelPosition.OUTSIDE_CHART);
+        leftAxis.setSpaceTop(15f);
+
+        YAxis rightAxis = _chart.getAxisRight();
+        rightAxis.setDrawGridLines(false);
+        rightAxis.setLabelCount(8, false);
+        rightAxis.setSpaceTop(15f);
+
+        Legend l = _chart.getLegend();
+        l.setPosition(Legend.LegendPosition.BELOW_CHART_LEFT);
+        l.setForm(Legend.LegendForm.SQUARE);
+        l.setFormSize(9f);
+        l.setTextSize(11f);
+        l.setXEntrySpace(4f);
     }
 }
