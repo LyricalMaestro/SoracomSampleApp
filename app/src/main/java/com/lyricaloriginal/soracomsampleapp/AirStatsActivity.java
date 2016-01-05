@@ -1,6 +1,5 @@
 package com.lyricaloriginal.soracomsampleapp;
 
-import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
@@ -10,13 +9,9 @@ import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.BarData;
-import com.github.mikephil.charting.data.BarDataSet;
-import com.github.mikephil.charting.data.BarEntry;
 import com.lyricaloriginal.soracomapiandroid.AirStats;
 import com.lyricaloriginal.soracomapiandroid.Soracom;
-import com.lyricaloriginal.soracomapiandroid.TrafficStats;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import retrofit.Call;
@@ -45,7 +40,7 @@ public class AirStatsActivity extends AppCompatActivity implements Callback<List
         _imsi = getIntent().getStringExtra("IMSI");
         if (savedInstanceState == null) {
             int current = (int) (System.currentTimeMillis() / 1000L);
-            int before = current - 60 * 60 * 24 * 365;
+            int before = current - 60 * 60 * 24 * 365;  //  １年分
             _call = Soracom.API.airSubscribers(
                     _authInfo.apiKey,
                     _authInfo.token,
@@ -93,33 +88,9 @@ public class AirStatsActivity extends AppCompatActivity implements Callback<List
         findViewById(R.id.progress_bar).setVisibility(View.GONE);
         _chart.setVisibility(View.VISIBLE);
 
-        ArrayList<String> xVals = new ArrayList<String>();
-        ArrayList<BarEntry> yVals1 = new ArrayList<BarEntry>();
-        for (int i = 0; i < airStatsList.size(); i++) {
-            AirStats airStats = airStatsList.get(i);
-            long val1 = 0;
-            long val2 = 0;
-            for (TrafficStats traffics : airStats.dataTrafficStatsMap.values()) {
-                val1 += traffics.uploadByteSizeTotal;
-                val2 += traffics.downloadByteSizeTotal;
-            }
-            xVals.add(airStats.date);
-            yVals1.add(new BarEntry(new float[]{val1, val2}, i));
-        }
-
-        BarDataSet set1 = new BarDataSet(yVals1, "通信量(KB)");
-        set1.setBarSpacePercent(35f);
-        set1.setColors(new int[]{
-                Color.BLUE, Color.YELLOW
-        });
-        set1.setStackLabels(new String[]{"Upload", "Download"});
-
-        ArrayList<BarDataSet> dataSets = new ArrayList<BarDataSet>();
-        dataSets.add(set1);
-
-        BarData data = new BarData(xVals, dataSets);
-        data.setValueTextSize(10f);
-
+        long current = System.currentTimeMillis();
+        long before = current - 60L * 60L * 24L * 365L * 1000L;  //  １年分
+        BarData data = AirStatsBarDataSetMaker.make(airStatsList, before, current);
         _chart.setData(data);
     }
 
