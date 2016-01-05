@@ -1,6 +1,7 @@
 package com.lyricaloriginal.soracomsampleapp;
 
 import android.app.DialogFragment;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
@@ -41,8 +42,8 @@ public class SubscriberDetailActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_subscriber_detail);
 
-        _authInfo = (Auth) getIntent().getParcelableExtra("AUTH_INFO" );
-        _imsi = getIntent().getStringExtra("IMSI" );
+        _authInfo = (Auth) getIntent().getParcelableExtra("AUTH_INFO");
+        _imsi = getIntent().getStringExtra("IMSI");
 
         if (savedInstanceState == null) {
             _call = Soracom.API.subscriber(
@@ -50,7 +51,6 @@ public class SubscriberDetailActivity extends AppCompatActivity
             _call.enqueue(getSubscriberCallback());
         }
     }
-
 
     @Override
     protected void onDestroy() {
@@ -71,13 +71,19 @@ public class SubscriberDetailActivity extends AppCompatActivity
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         menu.findItem(R.id.menu_change_activation).
-                setTitle(beActivate() ? "休止" : "使用開始" );
+                setTitle(beActivate() ? "休止" : "使用開始");
         return super.onPrepareOptionsMenu(menu);
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
+            case R.id.menu_air_stats:
+                Intent intent = new Intent(this, AirStatsActivity.class);
+                intent.putExtra("AUTH_INFO", _authInfo);
+                intent.putExtra("IMSI", _imsi);
+                startActivity(intent);
+                break;
             case R.id.menu_change_speed_class:
                 showSelectSpeedClassDialog();
                 break;
@@ -136,7 +142,7 @@ public class SubscriberDetailActivity extends AppCompatActivity
         }
         DialogFragment dialog = SingleChoiceDialogFragment.
                 newInstance("速度クラスの設定", values, sel);
-        dialog.show(getFragmentManager(), "SpeedClass" );
+        dialog.show(getFragmentManager(), "SpeedClass");
     }
 
     private void updateUi(SubScriber subScribers) {
@@ -160,7 +166,7 @@ public class SubscriberDetailActivity extends AppCompatActivity
             details.add("sessionStatus・ueIpAddress:\r\n" + subScribers.sessionStatus.ueIpAddress);
             details.add("sessionStatus・online:\r\n" + subScribers.sessionStatus.online);
         } else {
-            details.add("sessionStatus:\r\nNULL" );
+            details.add("sessionStatus:\r\nNULL");
         }
 
         ListView listView = (ListView) findViewById(R.id.detail_list);
@@ -173,7 +179,7 @@ public class SubscriberDetailActivity extends AppCompatActivity
     @Override
     public void onSelectItemListener(String tag, final String selectedValue) {
         Handler handler = new Handler();
-        if (tag.equals("SpeedClass" )) {
+        if (tag.equals("SpeedClass")) {
             handler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -263,6 +269,6 @@ public class SubscriberDetailActivity extends AppCompatActivity
             return false;
         }
 
-        return TextUtils.equals(_subScriber.status, "active" );
+        return TextUtils.equals(_subScriber.status, "active");
     }
 }
