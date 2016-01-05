@@ -1,51 +1,65 @@
 package com.lyricaloriginal.soracomsampleapp;
 
 import android.app.DialogFragment;
-import android.app.LoaderManager;
-import android.content.Loader;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import com.lyricaloriginal.soracomsampleapp.api.AuthInfo;
-import com.lyricaloriginal.soracomsampleapp.api.SpeedClass;
-import com.lyricaloriginal.soracomsampleapp.api.SubScriber;
+import com.lyricaloriginal.soracomapiandroid.Soracom;
+import com.lyricaloriginal.soracomapiandroid.SubScriber;
 
 import java.io.EOFException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 
+import retrofit.Call;
+import retrofit.Callback;
+import retrofit.Response;
+import retrofit.Retrofit;
+
 /**
  * 指定したSubScriberの詳細を示すActivityです。
  */
 public class SubscriberDetailActivity extends AppCompatActivity
-        implements LoaderManager.LoaderCallbacks<Response<SubScriber>>,
-        SingleChoiceDialogFragment.Listener {
+        implements SingleChoiceDialogFragment.Listener {
 
     private SubScriber _subScriber;
-    private AuthInfo _authInfo;
+    private Auth _authInfo;
     private String _imsi;
+
+    private Call<SubScriber> _call;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_subscriber_detail);
 
-        _authInfo = (AuthInfo) getIntent().getParcelableExtra("AUTH_INFO");
-        _imsi = getIntent().getStringExtra("IMSI");
+        _authInfo = (Auth) getIntent().getParcelableExtra("AUTH_INFO" );
+        _imsi = getIntent().getStringExtra("IMSI" );
 
-        Bundle bundle = new Bundle();
-        bundle.putParcelable("AUTH_INFO", _authInfo);
-        bundle.putString("IMSI", _imsi);
-        getLoaderManager().initLoader(0, bundle, this);
+        if (savedInstanceState == null) {
+            _call = Soracom.API.subscriber(
+                    _authInfo.apiKey, _authInfo.token, _imsi);
+            _call.enqueue(getSubscriberCallback());
+        }
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (_call != null && isFinishing()) {
+            _call.cancel();
+            ;
+            _call = null;
+        }
     }
 
     @Override
@@ -57,7 +71,7 @@ public class SubscriberDetailActivity extends AppCompatActivity
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         menu.findItem(R.id.menu_change_activation).
-                setTitle(beActivate() ? "休止" : "使用開始");
+                setTitle(beActivate() ? "休止" : "使用開始" );
         return super.onPrepareOptionsMenu(menu);
     }
 
@@ -68,57 +82,19 @@ public class SubscriberDetailActivity extends AppCompatActivity
                 showSelectSpeedClassDialog();
                 break;
             case R.id.menu_change_activation:
-                Bundle bundle = new Bundle();
-                bundle.putParcelable("AUTH_INFO", _authInfo);
-                bundle.putString("IMSI", _imsi);
-                bundle.putBoolean("BE_ACTIVATE", !beActivate());
-                getLoaderManager().restartLoader(2, bundle, SubscriberDetailActivity.this);
+                if (beActivate()) {
+                    _call = Soracom.API.changeStatusDeactivate(
+                            _authInfo.apiKey, _authInfo.token, _imsi
+                    );
+                } else {
+                    _call = Soracom.API.changeStatusActivate(
+                            _authInfo.apiKey, _authInfo.token, _imsi
+                    );
+                }
+                _call.enqueue(getChangeActivateCallback(beActivate()));
                 break;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public Loader<Response<SubScriber>> onCreateLoader(int id, Bundle args) {
-        AuthInfo authInfo = (AuthInfo) args.getParcelable("AUTH_INFO");
-        String imsi = args.getString("IMSI");
-        if (id == 0) {
-            return new SubscriberLoader(this, authInfo, imsi);
-        } else if (id == 1) {
-            String speedClass = args.getString("SPEED_CLASS");
-            return new UpdateSpeedClassLoader(this, authInfo, imsi, speedClass);
-        } else if (id == 2) {
-            boolean beActivate = args.getBoolean("BE_ACTIVATE");
-            return new ChangeActivationLoader(this, authInfo, imsi, beActivate);
-        }
-        return null;
-    }
-
-    @Override
-    public void onLoadFinished(Loader<Response<SubScriber>> loader, Response<SubScriber> data) {
-        if (data.getResult()) {
-            if (loader instanceof UpdateSpeedClassLoader) {
-                Toast.makeText(this, "速度クラスを更新しました。", Toast.LENGTH_SHORT).show();
-            } else if (loader instanceof ChangeActivationLoader) {
-                Toast.makeText(this, "Statusを変更しました。", Toast.LENGTH_SHORT).show();
-            }
-
-            SubScriber subScriber = data.getData();
-            if (subScriber != null) {
-                _subScriber = subScriber;
-                updateUi(subScriber);
-            } else {
-                showNotExistToast();
-            }
-        } else {
-            Log.e(getClass().getName(), "失敗", data.getException());
-            showToast(data.getException());
-        }
-    }
-
-    @Override
-    public void onLoaderReset(Loader<Response<SubScriber>> loader) {
-
     }
 
     private void showToast(final Exception ex) {
@@ -160,14 +136,14 @@ public class SubscriberDetailActivity extends AppCompatActivity
         }
         DialogFragment dialog = SingleChoiceDialogFragment.
                 newInstance("速度クラスの設定", values, sel);
-        dialog.show(getFragmentManager(), "SpeedClass");
+        dialog.show(getFragmentManager(), "SpeedClass" );
     }
 
     private void updateUi(SubScriber subScribers) {
         List<String> details = new ArrayList<String>();
         details.add("IMSI:\r\n" + subScribers.imsi);
         details.add("MSISDN:\r\n" + subScribers.msisdn);
-        details.add("NAME:\r\n" + subScribers.tags.name);
+        details.add("NAME:\r\n" + subScribers.tags.get("name"));
         details.add("IP Address:\r\n" + subScribers.ipAddress);
         details.add("SpeedClass:\r\n" + subScribers.speedClass);
         details.add("STATUS:\r\n" + subScribers.status);
@@ -176,15 +152,15 @@ public class SubscriberDetailActivity extends AppCompatActivity
         details.add("moduleType:\r\n" + subScribers.moduleType);
         details.add("createAt:\r\n" + subScribers.createdAt);
         details.add("lastModifiedAt:\r\n" + subScribers.lastModifiedAt);
-        details.add("expiredTime:\r\n" + subScribers.expirtyTime);
+        details.add("expiredTime:\r\n" + subScribers.expiryTime);
         details.add("terminationEnabled:\r\n" + subScribers.terminationEnabled);
         if (subScribers.sessionStatus != null) {
-            details.add("sessionStatus・lastUpdateAt:\r\n" + subScribers.sessionStatus.lastUpdateAt);
+            details.add("sessionStatus・lastUpdateAt:\r\n" + subScribers.sessionStatus.lastUpdatedAt);
             details.add("sessionStatus・IMEI:\r\n" + subScribers.sessionStatus.imei);
             details.add("sessionStatus・ueIpAddress:\r\n" + subScribers.sessionStatus.ueIpAddress);
             details.add("sessionStatus・online:\r\n" + subScribers.sessionStatus.online);
         } else {
-            details.add("sessionStatus:\r\nNULL");
+            details.add("sessionStatus:\r\nNULL" );
         }
 
         ListView listView = (ListView) findViewById(R.id.detail_list);
@@ -197,18 +173,89 @@ public class SubscriberDetailActivity extends AppCompatActivity
     @Override
     public void onSelectItemListener(String tag, final String selectedValue) {
         Handler handler = new Handler();
-        if (tag.equals("SpeedClass")) {
+        if (tag.equals("SpeedClass" )) {
             handler.post(new Runnable() {
                 @Override
                 public void run() {
-                    Bundle bundle = new Bundle();
-                    bundle.putParcelable("AUTH_INFO", _authInfo);
-                    bundle.putString("IMSI", _imsi);
-                    bundle.putString("SPEED_CLASS", selectedValue);
-                    getLoaderManager().restartLoader(1, bundle, SubscriberDetailActivity.this);
+                    _call = Soracom.API.updateSpeedClass(
+                            _authInfo.apiKey, _authInfo.token, _imsi,
+                            SpeedClass.toRequest(selectedValue));
+                    _call.enqueue(getUpdateSpeedClass());
                 }
             });
         }
+    }
+
+
+    private Callback<SubScriber> getSubscriberCallback() {
+        return new Callback<SubScriber>() {
+            @Override
+            public void onResponse(Response<SubScriber> response, Retrofit retrofit) {
+                if (response.isSuccess()) {
+                    SubScriber subScriber = response.body();
+                    if (subScriber != null) {
+                        _subScriber = subScriber;
+                        updateUi(subScriber);
+                    } else {
+                        showNotExistToast();
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+
+            }
+        };
+    }
+
+    private Callback<SubScriber> getUpdateSpeedClass() {
+        return new Callback<SubScriber>() {
+            @Override
+            public void onResponse(Response<SubScriber> response, Retrofit retrofit) {
+                if (response.isSuccess()) {
+                    SubScriber subScriber = response.body();
+                    if (subScriber != null) {
+                        Toast.makeText(SubscriberDetailActivity.this,
+                                "速度クラスを更新しました。", Toast.LENGTH_SHORT).show();
+                        _subScriber = subScriber;
+                        updateUi(subScriber);
+                    } else {
+                        showNotExistToast();
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+
+            }
+        };
+    }
+
+    private Callback<SubScriber> getChangeActivateCallback(
+            boolean activateBefore) {
+        return new Callback<SubScriber>() {
+            @Override
+            public void onResponse(Response<SubScriber> response, Retrofit retrofit) {
+                if (response.isSuccess()) {
+                    SubScriber subScriber = response.body();
+                    if (subScriber != null) {
+                        Toast.makeText(getApplicationContext(),
+                                "Statusを変更しました。", Toast.LENGTH_SHORT).show();
+                        _subScriber = subScriber;
+                        updateUi(subScriber);
+                    } else {
+                        showNotExistToast();
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+
+            }
+        };
     }
 
     private boolean beActivate() {
@@ -216,6 +263,6 @@ public class SubscriberDetailActivity extends AppCompatActivity
             return false;
         }
 
-        return TextUtils.equals(_subScriber.status, "active");
+        return TextUtils.equals(_subScriber.status, "active" );
     }
 }

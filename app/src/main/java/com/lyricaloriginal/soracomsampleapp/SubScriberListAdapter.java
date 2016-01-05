@@ -7,7 +7,7 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
 
-import com.lyricaloriginal.soracomsampleapp.api.SubScriber;
+import com.lyricaloriginal.soracomapiandroid.SubScriber;
 
 /**
  * Created by LyricalMaestro on 15/10/17.
@@ -58,7 +58,7 @@ class SubScriberListAdapter extends BaseAdapter {
         TextView msisdnTextView = (TextView) convertView.findViewById(R.id.msisdn_text_view);
         msisdnTextView.setText("MSISDN : " + subScriber.msisdn);
         TextView nameTextView = (TextView) convertView.findViewById(R.id.name_text_view);
-        nameTextView.setText(subScriber.tags.name);
+        nameTextView.setText(subScriber.tags.get("name"));
         return convertView;
     }
 }

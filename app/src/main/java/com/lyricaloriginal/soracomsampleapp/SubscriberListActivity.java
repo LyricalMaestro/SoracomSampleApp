@@ -1,8 +1,6 @@
 package com.lyricaloriginal.soracomsampleapp;
 
-import android.app.LoaderManager;
 import android.content.Intent;
-import android.content.Loader;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
@@ -13,19 +11,26 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import com.lyricaloriginal.soracomsampleapp.api.AuthInfo;
-import com.lyricaloriginal.soracomsampleapp.api.SubScriber;
+import com.lyricaloriginal.soracomapiandroid.Soracom;
+import com.lyricaloriginal.soracomapiandroid.SubScriber;
 
 import java.io.EOFException;
 import java.net.SocketTimeoutException;
+import java.util.List;
+
+import retrofit.Call;
+import retrofit.Callback;
+import retrofit.Response;
+import retrofit.Retrofit;
 
 /**
  * Subscriberの一覧を表示するためのActivityです。
  */
 public class SubscriberListActivity extends AppCompatActivity
-        implements LoaderManager.LoaderCallbacks<Response<SubScriber[]>> {
+        implements Callback<List<SubScriber>> {
 
-    private AuthInfo _authInfo;
+    private Auth _authInfo;
+    private Call<List<SubScriber>> _call;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,27 +39,38 @@ public class SubscriberListActivity extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        _authInfo = (AuthInfo) getIntent().getParcelableExtra("AUTH_INFO");
+        _authInfo = (Auth) getIntent().getParcelableExtra("AUTH_INFO" );
 
-        Bundle bundle = new Bundle();
-        bundle.putParcelable("AUTH_INFO", _authInfo);
-        getLoaderManager().initLoader(0, bundle, this);
+        if (savedInstanceState == null) {
+            _call = Soracom.API.subscribers(
+                    _authInfo.apiKey, _authInfo.token);
+            _call.enqueue(this);
+        }
     }
 
     @Override
-    public Loader<Response<SubScriber[]>> onCreateLoader(int id, Bundle args) {
-        AuthInfo authInfo = (AuthInfo) args.getParcelable("AUTH_INFO");
-        return new SubscribersLoader(this, authInfo);
+    protected void onDestroy() {
+        super.onDestroy();
+        if (_call != null && isFinishing()) {
+            _call.cancel();
+            _call = null;
+        }
     }
 
     @Override
-    public void onLoadFinished(Loader<Response<SubScriber[]>> loader, Response<SubScriber[]> data) {
-        if (data.getResult()) {
-            SubScriber[] subScribers = data.getData();
-            updateUi(subScribers);
-        } else {
-            Log.e(getClass().getName(), "失敗", data.getException());
-            showToast(data.getException());
+    public void onResponse(Response<List<SubScriber>> response, Retrofit retrofit) {
+        if (response.isSuccess()) {
+            List<SubScriber> subScribers = response.body();
+            updateUi(subScribers.toArray(new SubScriber[0]));
+        }
+    }
+
+    @Override
+    public void onFailure(Throwable t) {
+        _call = null;
+        Log.e(getClass().getName(), "失敗", t);
+        if (t instanceof Exception) {
+            showToast((Exception) t);
         }
     }
 
@@ -84,16 +100,9 @@ public class SubscriberListActivity extends AppCompatActivity
                     msg = "接続がタイムアウトしました。";
                 } else if (ex instanceof EOFException) {
                     msg = "通信中にエラーが発生しました。";
-                } else if (ex instanceof IllegalAccessException) {
-                    msg = "メールアドレスもしくはパスワードが間違っています。";
                 }
                 Toast.makeText(SubscriberListActivity.this, msg, Toast.LENGTH_LONG).show();
             }
         });
-    }
-
-    @Override
-    public void onLoaderReset(Loader<Response<SubScriber[]>> loader) {
-
     }
 }
