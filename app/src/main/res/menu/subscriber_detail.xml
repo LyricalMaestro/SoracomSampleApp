@@ -2,6 +2,10 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/menu_air_stats"
+        android:title="通信量履歴"
+        app:showAsAction="ifRoom"/>
+    <item
         android:id="@+id/menu_change_speed_class"
         android:title="速度クラス変更"
         app:showAsAction="never"/>
