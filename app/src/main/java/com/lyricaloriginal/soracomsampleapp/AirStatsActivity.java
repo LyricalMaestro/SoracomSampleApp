@@ -9,9 +9,13 @@ import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.BarData;
+import com.github.mikephil.charting.formatter.XAxisValueFormatter;
+import com.github.mikephil.charting.formatter.YAxisValueFormatter;
+import com.github.mikephil.charting.utils.ViewPortHandler;
 import com.lyricaloriginal.soracomapiandroid.AirStats;
 import com.lyricaloriginal.soracomapiandroid.Soracom;
 
+import java.text.DecimalFormat;
 import java.util.List;
 
 import retrofit.Call;
@@ -38,6 +42,7 @@ public class AirStatsActivity extends AppCompatActivity implements Callback<List
 
         _authInfo = (Auth) getIntent().getParcelableExtra("AUTH_INFO");
         _imsi = getIntent().getStringExtra("IMSI");
+        setTitle("IMSI : " + _imsi);
         if (savedInstanceState == null) {
             int current = (int) (System.currentTimeMillis() / 1000L);
             int before = current - 60 * 60 * 24 * 365;  //  １年分
@@ -99,6 +104,7 @@ public class AirStatsActivity extends AppCompatActivity implements Callback<List
     }
 
     private void initChart() {
+        _chart.setDescription("");
         _chart.setMaxVisibleValueCount(60);
         _chart.setPinchZoom(false);
         _chart.setDrawGridBackground(false);
@@ -106,17 +112,22 @@ public class AirStatsActivity extends AppCompatActivity implements Callback<List
         XAxis xAxis = _chart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setDrawGridLines(false);
-        xAxis.setSpaceBetweenLabels(2);
+        xAxis.setLabelsToSkip(3);
+        xAxis.setLabelRotationAngle(30);
+        xAxis.setXOffset(50);
+        xAxis.setValueFormatter(new MyXAxisValueFormatter());
 
         YAxis leftAxis = _chart.getAxisLeft();
         leftAxis.setLabelCount(8, false);
         leftAxis.setPosition(YAxis.YAxisLabelPosition.OUTSIDE_CHART);
         leftAxis.setSpaceTop(15f);
+        leftAxis.setValueFormatter(new MyYAxisValueFormatter());
 
         YAxis rightAxis = _chart.getAxisRight();
         rightAxis.setDrawGridLines(false);
         rightAxis.setLabelCount(8, false);
         rightAxis.setSpaceTop(15f);
+        rightAxis.setValueFormatter(new MyYAxisValueFormatter());
 
         Legend l = _chart.getLegend();
         l.setPosition(Legend.LegendPosition.BELOW_CHART_LEFT);
@@ -125,4 +136,26 @@ public class AirStatsActivity extends AppCompatActivity implements Callback<List
         l.setTextSize(11f);
         l.setXEntrySpace(4f);
     }
+
+    private class MyXAxisValueFormatter implements XAxisValueFormatter {
+        @Override
+        public String getXValue(String original, int index, ViewPortHandler viewPortHandler) {
+            return String.format("  %s/%s", original.substring(0, 4), original.substring(4));
+        }
+    }
+
+    private class MyYAxisValueFormatter implements YAxisValueFormatter {
+
+        private DecimalFormat mFormat;
+
+        MyYAxisValueFormatter(){
+            mFormat = new DecimalFormat("##,###,###");
+        }
+
+        @Override
+        public String getFormattedValue(float value, YAxis yAxis) {
+            return mFormat.format(value / 1024) + "KB";
+        }
+    }
+
 }

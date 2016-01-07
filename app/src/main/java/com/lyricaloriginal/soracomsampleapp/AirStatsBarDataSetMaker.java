@@ -5,9 +5,13 @@ import android.graphics.Color;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.github.mikephil.charting.utils.ViewPortHandler;
 import com.lyricaloriginal.soracomapiandroid.AirStats;
 import com.lyricaloriginal.soracomapiandroid.TrafficStats;
 
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -47,6 +51,7 @@ final class AirStatsBarDataSetMaker {
                 Color.BLUE, Color.YELLOW
         });
         set1.setStackLabels(new String[]{"Upload", "Download"});
+        set1.setValueFormatter(new MyValueFormatter());
 
         ArrayList<BarDataSet> dataSets = new ArrayList<BarDataSet>();
         dataSets.add(set1);
@@ -81,5 +86,19 @@ final class AirStatsBarDataSetMaker {
             }
         }
         return months;
+    }
+
+    private static class MyValueFormatter implements ValueFormatter{
+
+        private DecimalFormat mFormat;
+
+        MyValueFormatter(){
+            mFormat = new DecimalFormat("##,###,###");
+        }
+
+        @Override
+        public String getFormattedValue(float value, Entry entry, int dataSetIndex, ViewPortHandler viewPortHandler) {
+            return mFormat.format((value / 1024));
+        }
     }
 }
