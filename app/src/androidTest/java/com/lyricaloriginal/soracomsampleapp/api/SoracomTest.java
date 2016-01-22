@@ -1,7 +1,7 @@
 package com.lyricaloriginal.soracomsampleapp.api;
 
 /**
- * Created by shinichitanimoto on 2015/12/17.
+ * Created by LyricalMaestro on 2015/12/17.
  */
 
 import android.content.Context;
