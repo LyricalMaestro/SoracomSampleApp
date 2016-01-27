@@ -11,26 +11,22 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import com.lyricaloriginal.soracomapiandroid.Soracom;
 import com.lyricaloriginal.soracomapiandroid.SubScriber;
 
 import java.io.EOFException;
 import java.net.SocketTimeoutException;
 import java.util.List;
 
-import retrofit.Call;
-import retrofit.Callback;
 import retrofit.Response;
-import retrofit.Retrofit;
 
 /**
  * Subscriberの一覧を表示するためのActivityです。
  */
 public class SubscriberListActivity extends AppCompatActivity
-        implements Callback<List<SubScriber>> {
+        implements SubscriberListFragment.Listener {
 
-    private Auth _authInfo;
-    private Call<List<SubScriber>> _call;
+    private Auth mAuthInfo;
+    private SubscriberListFragment mSubsFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,26 +35,22 @@ public class SubscriberListActivity extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        _authInfo = (Auth) getIntent().getParcelableExtra("AUTH_INFO" );
+        mAuthInfo = (Auth) getIntent().getParcelableExtra("AUTH_INFO");
 
         if (savedInstanceState == null) {
-            _call = Soracom.API.subscribers(
-                    _authInfo.apiKey, _authInfo.token);
-            _call.enqueue(this);
+            mSubsFragment = new SubscriberListFragment();
+            getFragmentManager().beginTransaction()
+                    .add(mSubsFragment, SubscriberListFragment.class.getName())
+                    .commit();
+        } else {
+            mSubsFragment = (SubscriberListFragment) getFragmentManager()
+                    .findFragmentByTag(SubscriberListFragment.class.getName());
         }
+        mSubsFragment.subScribers(mAuthInfo);
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (_call != null && isFinishing()) {
-            _call.cancel();
-            _call = null;
-        }
-    }
-
-    @Override
-    public void onResponse(Response<List<SubScriber>> response, Retrofit retrofit) {
+    public void onResponse(Response<List<SubScriber>> response) {
         if (response.isSuccess()) {
             List<SubScriber> subScribers = response.body();
             updateUi(subScribers.toArray(new SubScriber[0]));
@@ -67,7 +59,6 @@ public class SubscriberListActivity extends AppCompatActivity
 
     @Override
     public void onFailure(Throwable t) {
-        _call = null;
         Log.e(getClass().getName(), "失敗", t);
         if (t instanceof Exception) {
             showToast((Exception) t);
@@ -83,7 +74,7 @@ public class SubscriberListActivity extends AppCompatActivity
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 String imsi = subScribers[position].imsi;
                 Intent intent = new Intent(SubscriberListActivity.this, SubscriberDetailActivity.class);
-                intent.putExtra("AUTH_INFO", _authInfo);
+                intent.putExtra("AUTH_INFO", mAuthInfo);
                 intent.putExtra("IMSI", imsi);
                 startActivity(intent);
             }

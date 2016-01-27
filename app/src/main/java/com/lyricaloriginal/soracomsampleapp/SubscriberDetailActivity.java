@@ -12,7 +12,6 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import com.lyricaloriginal.soracomapiandroid.Soracom;
 import com.lyricaloriginal.soracomapiandroid.SubScriber;
 
 import java.io.EOFException;
@@ -20,46 +19,38 @@ import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 
-import retrofit.Call;
-import retrofit.Callback;
 import retrofit.Response;
-import retrofit.Retrofit;
 
 /**
  * 指定したSubScriberの詳細を示すActivityです。
  */
 public class SubscriberDetailActivity extends AppCompatActivity
-        implements SingleChoiceDialogFragment.Listener {
+        implements SingleChoiceDialogFragment.Listener, SubscriberFragment.Listener {
 
-    private SubScriber _subScriber;
-    private Auth _authInfo;
-    private String _imsi;
+    private SubScriber mSubScriber;
+    private Auth mAuthInfo;
+    private String mImsi;
+    private SubscriberFragment mSubsFragment;
 
-    private Call<SubScriber> _call;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_subscriber_detail);
 
-        _authInfo = (Auth) getIntent().getParcelableExtra("AUTH_INFO");
-        _imsi = getIntent().getStringExtra("IMSI");
+        mAuthInfo = (Auth) getIntent().getParcelableExtra("AUTH_INFO");
+        mImsi = getIntent().getStringExtra("IMSI");
 
         if (savedInstanceState == null) {
-            _call = Soracom.API.subscriber(
-                    _authInfo.apiKey, _authInfo.token, _imsi);
-            _call.enqueue(getSubscriberCallback());
+            mSubsFragment = new SubscriberFragment();
+            getFragmentManager().beginTransaction().
+                    add(mSubsFragment, SubscriberFragment.class.getName()).
+                    commit();
+        } else {
+            mSubsFragment = (SubscriberFragment) getFragmentManager().
+                    findFragmentByTag(SubscriberFragment.class.getName());
         }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (_call != null && isFinishing()) {
-            _call.cancel();
-            ;
-            _call = null;
-        }
+        mSubsFragment.subScriber(mAuthInfo, mImsi);
     }
 
     @Override
@@ -80,8 +71,8 @@ public class SubscriberDetailActivity extends AppCompatActivity
         switch (item.getItemId()) {
             case R.id.menu_air_stats:
                 Intent intent = new Intent(this, AirStatsActivity.class);
-                intent.putExtra("AUTH_INFO", _authInfo);
-                intent.putExtra("IMSI", _imsi);
+                intent.putExtra("AUTH_INFO", mAuthInfo);
+                intent.putExtra("IMSI", mImsi);
                 startActivity(intent);
                 break;
             case R.id.menu_change_speed_class:
@@ -89,19 +80,47 @@ public class SubscriberDetailActivity extends AppCompatActivity
                 break;
             case R.id.menu_change_activation:
                 if (beActivate()) {
-                    _call = Soracom.API.changeStatusDeactivate(
-                            _authInfo.apiKey, _authInfo.token, _imsi
-                    );
+                    mSubsFragment.changeStatusDeactivate(mAuthInfo, mImsi);
                 } else {
-                    _call = Soracom.API.changeStatusActivate(
-                            _authInfo.apiKey, _authInfo.token, _imsi
-                    );
+                    mSubsFragment.changeStatusActivate(mAuthInfo, mImsi);
                 }
-                _call.enqueue(getChangeActivateCallback(beActivate()));
                 break;
         }
         return super.onOptionsItemSelected(item);
     }
+
+    @Override
+    public void onResponse(Response<SubScriber> response, String tag) {
+
+        if (response.isSuccess()) {
+            SubScriber subScriber = response.body();
+            if (subScriber != null) {
+                if(TextUtils.equals("updateSpeedClass", tag)){
+                    Toast.makeText(SubscriberDetailActivity.this,
+                            "速度クラスを更新しました。", Toast.LENGTH_SHORT).show();
+                }else if(TextUtils.equals("changeStatusDeactivate", tag)){
+                    Toast.makeText(getApplicationContext(),
+                            "Statusを変更しました。", Toast.LENGTH_SHORT).show();
+                }else if(TextUtils.equals("changeStatusActivate", tag)){
+                    Toast.makeText(getApplicationContext(),
+                            "Statusを変更しました。", Toast.LENGTH_SHORT).show();
+                }
+
+                mSubScriber = subScriber;
+                updateUi(subScriber);
+            } else {
+                showNotExistToast();
+            }
+        }
+    }
+
+    @Override
+    public void onFailure(Throwable t, String tag) {
+        if(t instanceof Exception){
+            showToast((Exception)t);
+        }
+    }
+
 
     private void showToast(final Exception ex) {
         Handler handler = new Handler();
@@ -136,7 +155,7 @@ public class SubscriberDetailActivity extends AppCompatActivity
         String[] values = SpeedClass.getValues();
         int sel = -1;
         for (int i = 0; i < values.length; i++) {
-            if (values[i].equals(_subScriber.speedClass)) {
+            if (values[i].equals(mSubScriber.speedClass)) {
                 sel = i;
             }
         }
@@ -183,92 +202,17 @@ public class SubscriberDetailActivity extends AppCompatActivity
             handler.post(new Runnable() {
                 @Override
                 public void run() {
-                    _call = Soracom.API.updateSpeedClass(
-                            _authInfo.apiKey, _authInfo.token, _imsi,
-                            SpeedClass.toRequest(selectedValue));
-                    _call.enqueue(getUpdateSpeedClass());
+                    mSubsFragment.updateSpeedClass(mAuthInfo, mImsi, selectedValue);
                 }
             });
         }
     }
 
-
-    private Callback<SubScriber> getSubscriberCallback() {
-        return new Callback<SubScriber>() {
-            @Override
-            public void onResponse(Response<SubScriber> response, Retrofit retrofit) {
-                if (response.isSuccess()) {
-                    SubScriber subScriber = response.body();
-                    if (subScriber != null) {
-                        _subScriber = subScriber;
-                        updateUi(subScriber);
-                    } else {
-                        showNotExistToast();
-                    }
-                }
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-
-            }
-        };
-    }
-
-    private Callback<SubScriber> getUpdateSpeedClass() {
-        return new Callback<SubScriber>() {
-            @Override
-            public void onResponse(Response<SubScriber> response, Retrofit retrofit) {
-                if (response.isSuccess()) {
-                    SubScriber subScriber = response.body();
-                    if (subScriber != null) {
-                        Toast.makeText(SubscriberDetailActivity.this,
-                                "速度クラスを更新しました。", Toast.LENGTH_SHORT).show();
-                        _subScriber = subScriber;
-                        updateUi(subScriber);
-                    } else {
-                        showNotExistToast();
-                    }
-                }
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-
-            }
-        };
-    }
-
-    private Callback<SubScriber> getChangeActivateCallback(
-            boolean activateBefore) {
-        return new Callback<SubScriber>() {
-            @Override
-            public void onResponse(Response<SubScriber> response, Retrofit retrofit) {
-                if (response.isSuccess()) {
-                    SubScriber subScriber = response.body();
-                    if (subScriber != null) {
-                        Toast.makeText(getApplicationContext(),
-                                "Statusを変更しました。", Toast.LENGTH_SHORT).show();
-                        _subScriber = subScriber;
-                        updateUi(subScriber);
-                    } else {
-                        showNotExistToast();
-                    }
-                }
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-
-            }
-        };
-    }
-
     private boolean beActivate() {
-        if (_subScriber == null) {
+        if (mSubScriber == null) {
             return false;
         }
 
-        return TextUtils.equals(_subScriber.status, "active");
+        return TextUtils.equals(mSubScriber.status, "active");
     }
 }

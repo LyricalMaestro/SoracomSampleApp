@@ -13,66 +13,50 @@ import com.github.mikephil.charting.formatter.XAxisValueFormatter;
 import com.github.mikephil.charting.formatter.YAxisValueFormatter;
 import com.github.mikephil.charting.utils.ViewPortHandler;
 import com.lyricaloriginal.soracomapiandroid.AirStats;
-import com.lyricaloriginal.soracomapiandroid.Soracom;
 
 import java.text.DecimalFormat;
 import java.util.List;
 
-import retrofit.Call;
-import retrofit.Callback;
 import retrofit.Response;
-import retrofit.Retrofit;
 
 /**
  * 通信量履歴をグラフ表示するためのActivityです。
  */
-public class AirStatsActivity extends AppCompatActivity implements Callback<List<AirStats>> {
+public class AirStatsActivity extends AppCompatActivity
+        implements AirStatsFragment.Listener {
 
-    protected BarChart _chart;
-    private Auth _authInfo;
-    private String _imsi;
-    private Call<List<AirStats>> _call = null;
+    protected BarChart mChart;
+    private Auth mAuthInfo;
+    private String mImsi;
+    private AirStatsFragment mFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_air_stats);
-        _chart = (BarChart) findViewById(R.id.chart1);
+        mChart = (BarChart) findViewById(R.id.chart1);
         initChart();
 
-        _authInfo = (Auth) getIntent().getParcelableExtra("AUTH_INFO");
-        _imsi = getIntent().getStringExtra("IMSI");
-        setTitle("IMSI : " + _imsi);
+        mAuthInfo = (Auth) getIntent().getParcelableExtra("AUTH_INFO");
+        mImsi = getIntent().getStringExtra("IMSI");
+        setTitle("IMSI : " + mImsi);
         if (savedInstanceState == null) {
-            int current = (int) (System.currentTimeMillis() / 1000L);
-            int before = current - 60 * 60 * 24 * 365;  //  １年分
-            _call = Soracom.API.airSubscribers(
-                    _authInfo.apiKey,
-                    _authInfo.token,
-                    _imsi,
-                    before,
-                    current,
-                    "month"
-            );
-            onStartExecuting();
-            _call.enqueue(this);
+            mFragment = new AirStatsFragment();
+            getFragmentManager().beginTransaction()
+                    .add(mFragment, AirStatsFragment.class.getName())
+                    .commit();
+        }else{
+            mFragment = (AirStatsFragment)getFragmentManager()
+                    .findFragmentByTag(AirStatsFragment.class.getName());
         }
+        onStartExecuting();
+        mFragment.airSubscribers(mAuthInfo, mImsi);
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (_call != null && isFinishing()) {
-            _call.cancel();
-            _call = null;
-        }
-    }
-
-    @Override
-    public void onResponse(Response<List<AirStats>> response, Retrofit retrofit) {
-        _call = null;
+    public void onResponse(Response<List<AirStats>> response, int current, int before) {
         if (response.isSuccess()) {
-            onSuccessExecuting(response.body());
+            onSuccessExecuting(response.body(), current, before);
         } else {
             onFailureExecuting();
         }
@@ -80,23 +64,21 @@ public class AirStatsActivity extends AppCompatActivity implements Callback<List
 
     @Override
     public void onFailure(Throwable t) {
-        _call = null;
         onFailureExecuting();
     }
 
     private void onStartExecuting() {
         findViewById(R.id.progress_bar).setVisibility(View.VISIBLE);
-        _chart.setVisibility(View.GONE);
+        mChart.setVisibility(View.GONE);
     }
 
-    private void onSuccessExecuting(List<AirStats> airStatsList) {
+    private void onSuccessExecuting(List<AirStats> airStatsList, int current, int before) {
         findViewById(R.id.progress_bar).setVisibility(View.GONE);
-        _chart.setVisibility(View.VISIBLE);
+        mChart.setVisibility(View.VISIBLE);
 
-        long current = System.currentTimeMillis();
-        long before = current - 60L * 60L * 24L * 365L * 1000L;  //  １年分
-        BarData data = AirStatsBarDataSetMaker.make(airStatsList, before, current);
-        _chart.setData(data);
+        BarData data = AirStatsBarDataSetMaker.make(airStatsList,
+                (long)before * 1000L, (long)current * 1000L);
+        mChart.setData(data);
     }
 
     private void onFailureExecuting() {
@@ -104,12 +86,12 @@ public class AirStatsActivity extends AppCompatActivity implements Callback<List
     }
 
     private void initChart() {
-        _chart.setDescription("");
-        _chart.setMaxVisibleValueCount(60);
-        _chart.setPinchZoom(false);
-        _chart.setDrawGridBackground(false);
+        mChart.setDescription("");
+        mChart.setMaxVisibleValueCount(60);
+        mChart.setPinchZoom(false);
+        mChart.setDrawGridBackground(false);
 
-        XAxis xAxis = _chart.getXAxis();
+        XAxis xAxis = mChart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setDrawGridLines(false);
         xAxis.setLabelsToSkip(3);
@@ -117,19 +99,19 @@ public class AirStatsActivity extends AppCompatActivity implements Callback<List
         xAxis.setXOffset(50);
         xAxis.setValueFormatter(new MyXAxisValueFormatter());
 
-        YAxis leftAxis = _chart.getAxisLeft();
+        YAxis leftAxis = mChart.getAxisLeft();
         leftAxis.setLabelCount(8, false);
         leftAxis.setPosition(YAxis.YAxisLabelPosition.OUTSIDE_CHART);
         leftAxis.setSpaceTop(15f);
         leftAxis.setValueFormatter(new MyYAxisValueFormatter());
 
-        YAxis rightAxis = _chart.getAxisRight();
+        YAxis rightAxis = mChart.getAxisRight();
         rightAxis.setDrawGridLines(false);
         rightAxis.setLabelCount(8, false);
         rightAxis.setSpaceTop(15f);
         rightAxis.setValueFormatter(new MyYAxisValueFormatter());
 
-        Legend l = _chart.getLegend();
+        Legend l = mChart.getLegend();
         l.setPosition(Legend.LegendPosition.BELOW_CHART_LEFT);
         l.setForm(Legend.LegendForm.SQUARE);
         l.setFormSize(9f);

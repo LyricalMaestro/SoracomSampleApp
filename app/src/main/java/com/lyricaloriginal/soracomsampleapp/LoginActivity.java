@@ -1,4 +1,5 @@
 package com.lyricaloriginal.soracomsampleapp;
+
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -13,8 +14,6 @@ import android.widget.Button;
 import android.widget.EditText;
 
 import com.lyricaloriginal.soracomapiandroid.AuthInfo;
-import com.lyricaloriginal.soracomapiandroid.AuthRequest;
-import com.lyricaloriginal.soracomapiandroid.Soracom;
 
 import net.arnx.jsonic.util.Base64;
 
@@ -22,18 +21,15 @@ import java.io.EOFException;
 import java.io.UnsupportedEncodingException;
 import java.net.SocketTimeoutException;
 
-import retrofit.Call;
-import retrofit.Callback;
 import retrofit.Response;
-import retrofit.Retrofit;
 
 /**
  * ログイン画面のActivityです。
  */
 public class LoginActivity extends AppCompatActivity
-        implements Callback<AuthInfo> {
+        implements LoginFragment.Listener {
 
-    private Call<AuthInfo> _call;
+    private LoginFragment mLoginFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,6 +38,7 @@ public class LoginActivity extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         initEditText();
+        initLoginFragment(savedInstanceState);
 
         if (savedInstanceState == null) {
             String email = loadEmailAddress();
@@ -57,30 +54,18 @@ public class LoginActivity extends AppCompatActivity
             @Override
             public void onClick(View v) {
                 setUiComponentEnable(false);
-
                 EditText emailEditText = (EditText) findViewById(R.id.email_edit_text);
                 EditText passwordEditText = (EditText) findViewById(R.id.password_edit_text);
                 final String email = emailEditText.getEditableText().toString();
                 final String password = passwordEditText.getEditableText().toString();
-                _call = Soracom.API.auth(new AuthRequest(email, password));
-                _call.enqueue(LoginActivity.this);
+                mLoginFragment.login(email, password);
             }
         });
+        setUiComponentEnable(!mLoginFragment.isConnecting());
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (_call != null && isFinishing()) {
-            setUiComponentEnable(true);
-            _call.cancel();
-            _call = null;
-        }
-    }
-
-    @Override
-    public void onResponse(Response<AuthInfo> response, Retrofit retrofit) {
-        _call = null;
+    public void onResponse(Response<AuthInfo> response) {
         setUiComponentEnable(true);
         if (response.isSuccess()) {
             saveEmailAddress();
@@ -95,7 +80,6 @@ public class LoginActivity extends AppCompatActivity
 
     @Override
     public void onFailure(Throwable t) {
-        _call = null;
         if (t instanceof Exception) {
             showErrorDialog((Exception) t);
         }
@@ -160,6 +144,18 @@ public class LoginActivity extends AppCompatActivity
         };
         InputFilter[] filters2 = new InputFilter[]{inputFilter2};
         PassEditText.setFilters(filters2);
+    }
+
+    private void initLoginFragment(Bundle savedInstanceState) {
+        if (savedInstanceState == null) {
+            mLoginFragment = new LoginFragment();
+            getFragmentManager().beginTransaction()
+                    .add(mLoginFragment, LoginFragment.class.getName())
+                    .commit();
+        } else {
+            mLoginFragment = (LoginFragment) getFragmentManager()
+                    .findFragmentByTag(LoginFragment.class.getName());
+        }
     }
 
     private void saveEmailAddress() {
