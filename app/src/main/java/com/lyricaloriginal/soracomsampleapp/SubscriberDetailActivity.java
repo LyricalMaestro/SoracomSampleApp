@@ -15,9 +15,13 @@ import android.widget.Toast;
 import com.lyricaloriginal.soracomapiandroid.SubScriber;
 
 import java.io.EOFException;
+import java.math.BigDecimal;
 import java.net.SocketTimeoutException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import retrofit.Response;
 
@@ -165,27 +169,29 @@ public class SubscriberDetailActivity extends AppCompatActivity
     }
 
     private void updateUi(SubScriber subScribers) {
+
         List<String> details = new ArrayList<String>();
         details.add("IMSI:\r\n" + subScribers.imsi);
         details.add("MSISDN:\r\n" + subScribers.msisdn);
-        details.add("NAME:\r\n" + subScribers.tags.get("name"));
-        details.add("IP Address:\r\n" + subScribers.ipAddress);
-        details.add("SpeedClass:\r\n" + subScribers.speedClass);
-        details.add("STATUS:\r\n" + subScribers.status);
+        details.add("名前:\r\n" + subScribers.tags.get("name"));
+        details.add("製造番号:\r\n" + subScribers.serialNumber);
+        details.add("IPアドレス:\r\n" + subScribers.ipAddress);
+        details.add("速度クラス:\r\n" + subScribers.speedClass);
+        details.add("状態:\r\n" + subScribers.status);
         details.add("APN:\r\n" + subScribers.apn);
-        details.add("groupId:\r\n" + subScribers.groupId);
-        details.add("moduleType:\r\n" + subScribers.moduleType);
-        details.add("createAt:\r\n" + subScribers.createdAt);
-        details.add("lastModifiedAt:\r\n" + subScribers.lastModifiedAt);
-        details.add("expiredTime:\r\n" + subScribers.expiryTime);
-        details.add("terminationEnabled:\r\n" + subScribers.terminationEnabled);
+        details.add("所属グループID:\r\n" + subScribers.groupId);
+        details.add("モジュールタイプ:\r\n" + subScribers.moduleType);
+        details.add("作成日時:\r\n" + formatDate(subScribers.createdAt));
+        details.add("最終更新日時:\r\n" + formatDate(subScribers.lastModifiedAt));
+        details.add("有効期限:\r\n" + toExpire(subScribers.expiryTime));
+        details.add("TP:\r\n" + subScribers.terminationEnabled);
         if (subScribers.sessionStatus != null) {
-            details.add("sessionStatus・lastUpdateAt:\r\n" + subScribers.sessionStatus.lastUpdatedAt);
-            details.add("sessionStatus・IMEI:\r\n" + subScribers.sessionStatus.imei);
-            details.add("sessionStatus・ueIpAddress:\r\n" + subScribers.sessionStatus.ueIpAddress);
-            details.add("sessionStatus・online:\r\n" + subScribers.sessionStatus.online);
+            details.add("セッション状態・最終更新日時:\r\n" + formatDate(subScribers.sessionStatus.lastUpdatedAt));
+            details.add("セッション状態・IMEI:\r\n" + subScribers.sessionStatus.imei);
+            details.add("セッション状態・ueIpAddress:\r\n" + subScribers.sessionStatus.ueIpAddress);
+            details.add("セッション状態・online:\r\n" + subScribers.sessionStatus.online);
         } else {
-            details.add("sessionStatus:\r\nNULL");
+            details.add("セッション状態:\r\n---");
         }
 
         ListView listView = (ListView) findViewById(R.id.detail_list);
@@ -193,6 +199,20 @@ public class SubscriberDetailActivity extends AppCompatActivity
                 android.R.layout.simple_list_item_1,
                 details.toArray(new String[0]));
         listView.setAdapter(adapter);
+    }
+
+    private String formatDate(BigDecimal value){
+        SimpleDateFormat format = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.getDefault());
+        return format.format(new Date(value.longValue()));
+    }
+
+    private String toExpire(BigDecimal value){
+        if(value == null){
+            return "---";
+        }
+
+        SimpleDateFormat format = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.getDefault());
+        return format.format(new Date(value.longValue())) + " まで";
     }
 
     @Override
